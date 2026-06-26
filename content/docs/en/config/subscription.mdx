@@ -59,9 +59,38 @@ Subscriptions return standard headers that compatible apps read:
 
 ## Custom page templates
 
-Point `subThemeDir` at a folder containing a custom info-page template to brand
-the HTML subscription page. The per-client remark on each link is fully
-templated — see [Share links → remark variables](/docs/config/share-links#remark-template-variables).
+Point **Sub Theme Directory** (`subThemeDir`, under **Settings → Subscription →
+Information**) at the **absolute path** of a folder that holds an `index.html` or
+`sub.html` file (e.g. `/etc/3x-ui/sub_templates/my-theme/`) to brand the HTML info
+page. The panel ships no templates by default — leave the field empty for the
+built-in page. Pages are rendered with Go's
+[`html/template`](https://pkg.go.dev/html/template), with these variables injected
+as `{{ .name }}`:
+
+| Variable | Value |
+| --- | --- |
+| `{{ .sId }}` | Subscription ID (UUID). |
+| `{{ .subTitle }}`, `{{ .subSupportUrl }}` | Title and support URL from **Subscription → Information** (may be empty). |
+| `{{ .subUrl }}`, `{{ .subJsonUrl }}`, `{{ .subClashUrl }}` | Subscription, JSON and Clash/Mihomo URLs. |
+| `{{ .links }}` | Slice of config links (`vless://`, `vmess://`, …) — loop with `{{ range .links }}…{{ end }}`. |
+| `{{ .emails }}` | Slice of client emails in the subscription. |
+| `{{ .enabled }}` | Whether the client/subscription is enabled (boolean). |
+| `{{ .upload }}`, `{{ .download }}`, `{{ .used }}`, `{{ .total }}`, `{{ .remained }}` | Human-readable traffic (e.g. `2.5 GB`). |
+| `{{ .uploadByte }}`, `{{ .downloadByte }}`, `{{ .totalByte }}` | The same values in exact bytes (int64). |
+| `{{ .expire }}` | Expiry as a Unix timestamp in **seconds** (`0` = never); multiply by 1000 for a JS `Date`. |
+| `{{ .lastOnline }}` | Last-online Unix timestamp in **milliseconds** (`0` = never seen). |
+| `{{ .datepicker }}` | Panel calendar format — `gregorian` or `jalali`. |
+
+```html
+<h1>{{ .subTitle }}</h1>
+<p>Used {{ .used }} of {{ .total }} ({{ .remained }} left)</p>
+{{ range .links }}<div>{{ . }}</div>{{ end }}
+```
+
+The per-client remark on each link is templated too — see
+[Share links → remark variables](/docs/config/share-links#remark-template-variables).
+For the full authoring guide see
+[`docs/custom-subscription-templates.md`](https://github.com/MHSanaei/3x-ui/blob/main/docs/custom-subscription-templates.md).
 
 <Callout type="info">
   Put the subscription server behind TLS (set `subCertFile`/`subKeyFile`, or a
