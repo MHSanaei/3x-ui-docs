@@ -1,0 +1,59 @@
+---
+title: 传输方式与安全层
+description: 3x-ui 提供的传输方式与安全层——TLS、REALITY、XTLS-Vision 以及 VLESS 加密，以及哪些组合是有效的。
+icon: Network
+---
+
+**传输方式**决定数据包在客户端与服务器之间如何承载，而**安全**层决定它们如何被加密和伪装。
+面板只提供有效的组合；本页列出它强制执行的规则。
+
+## 传输方式
+
+| 传输方式        | 适用场景                                                          |
+| --------------- | ----------------------------------------------------------------- |
+| **TCP (Raw)**   | 开销最低。是 REALITY + XTLS-Vision 以及回落的基础。               |
+| **WebSocket**   | 可穿透 CDN 和 HTTP 反向代理；兼容性极佳。                         |
+| **gRPC**        | 基于 HTTP/2；多路复用效果好，通过 Nginx 代理也很干净。           |
+| **HTTPUpgrade** | 对 CDN 友好的 HTTP/1.1 升级，比完整的 WebSocket 更轻量。          |
+| **XHTTP**       | 用于基于 HTTP 代理的扩展 HTTP 传输。                              |
+| **HTTP**        | HTTP/2 传输。                                                     |
+
+## 安全
+
+安全层为 **`none`**、**`tls`** 或 **`reality`** 三者之一，并遵循以下适用规则：
+
+| 安全层      | 适用的传输方式                            | 适用的协议                                          |
+| ----------- | ----------------------------------------- | --------------------------------------------------- |
+| **TLS**     | `tcp`, `ws`, `http`, `grpc`, `httpupgrade`, `xhttp` | VLESS、VMess、Trojan、Shadowsocks（以及 Hysteria2） |
+| **REALITY** | `tcp`, `http`, `grpc`, `xhttp`            | VLESS、Trojan                                       |
+
+REALITY 会把你的服务器伪装成一个真实的 TLS 站点，且无需证书——参见
+[REALITY](/docs/config/reality)。
+
+## XTLS-Vision 流控
+
+`xtls-rprx-vision` 流控既快速又能抵抗 DPI。在以下任一情况下，它都可用于 **VLESS**：
+
+- 传输方式为裸 **TCP**，安全层为 **TLS** 或 **REALITY**（经典的
+  XTLS-Vision），或者
+- 传输方式为 **XHTTP** 且启用了 VLESS 加密（见下文）。
+
+请在 VLESS **客户端**上设置流控，而不是在入站上。
+
+## VLESS 加密（ML-KEM）
+
+VLESS 支持后量子**加密**（ML-KEM / `mlkem768x25519`），它存储在入站的 `decryption`
+（服务器）以及客户端的 `encryption`（用于生成链接）中。启用后，它会解锁在 XHTTP
+之上的 Vision 流控。请从面板的 VLESS 设置中生成密钥。
+
+## Shadowsocks 加密方式
+
+Shadowsocks 入站同时支持经典加密方式和 **Shadowsocks-2022**（以 `2022-blake3-`
+开头的方法名）。大多数加密方式支持多用户；`2022-blake3-chacha20-poly1305`
+为单用户。
+
+<Callout type="info">
+  传输方式和安全层必须在两端一致。客户端的分享链接会对它们进行编码（`type=ws`、
+  `security=reality`、`flow=xtls-rprx-vision`……）——可使用
+  [分享链接检查器](/docs/config/share-links)解码任意链接。
+</Callout>
