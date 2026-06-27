@@ -19,6 +19,20 @@ offers valid combinations; this page lists the rules it enforces.
 | **XHTTP**       | Extended HTTP transport for HTTP-based proxying.                  |
 | **HTTP**        | HTTP/2 transport.                                                 |
 
+## Transport parameters
+
+Each transport exposes its own fields in the inbound's **Transport** settings;
+the client and server must use the same values. The common ones:
+
+| Transport       | Key fields                                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **TCP (Raw)**   | Optional **HTTP camouflage** (request/response `type`, `path`, and `Host` header) to look like plain HTTP, plus **Proxy Protocol** (`acceptProxyProtocol`) to receive the real client IP from an upstream proxy. |
+| **WebSocket**   | `path` and a `Host` header; `acceptProxyProtocol` when behind a proxy.                                                                                                     |
+| **gRPC**        | `serviceName` (the gRPC path) and `multiMode`.                                                                                                                             |
+| **HTTPUpgrade** | `path` and `Host`; `acceptProxyProtocol`.                                                                                                                                  |
+| **XHTTP**       | `path`, `Host`, and **`mode`** — one of `auto`, `packet-up`, `stream-up`, or `stream-one`.                                                                                 |
+| **HTTP**        | `path` and one or more `Host` values (HTTP/2).                                                                                                                             |
+
 ## Security
 
 The security layer is one of **`none`**, **`tls`**, or **`reality`**, with these
