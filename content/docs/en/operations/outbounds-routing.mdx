@@ -17,6 +17,37 @@ separate per-rule UI — you edit the JSON, and the panel reloads Xray. The pane
 also offers an **outbound connectivity test** and a **route test** (ask the
 running core which outbound a given destination would use).
 
+## Build an outbound
+
+Every outbound is a JSON object with up to four parts: a **`tag`** (referenced by
+routing rules and balancers), a **`protocol`**, protocol-specific **`settings`**,
+and — for proxy protocols — **`streamSettings`** that must match the remote
+inbound's transport and security. Two outbounds are almost always present:
+
+- **`freedom`** sends traffic straight to its destination — the default egress.
+  Optionally set a `domainStrategy` (e.g. `UseIP`) to control how hostnames resolve.
+- **`blackhole`** drops traffic. Route unwanted destinations (ads, torrents) here.
+
+```json title="freedom + blackhole"
+{
+  "outbounds": [
+    { "tag": "direct", "protocol": "freedom", "settings": {} },
+    { "tag": "block", "protocol": "blackhole", "settings": {} }
+  ]
+}
+```
+
+A **proxy** outbound (VLESS, VMess, Trojan, Shadowsocks) forwards to another
+server — handy for chaining or sending select traffic abroad. Mind the wire
+shapes 3x-ui uses: **VLESS is the flat form** (`address`/`port`/`id`/`flow`/
+`encryption`), **VMess uses `settings.vnext[]`**, and **Trojan/Shadowsocks use
+`settings.servers[]`**. The `streamSettings` must mirror the destination's
+[transport and security](/docs/config/transports).
+
+Assemble any outbound below and paste the JSON into **Xray Settings → Outbounds**:
+
+<OutboundGenerator />
+
 ## Cloudflare WARP
 
 WARP lets your server egress through Cloudflare's network. 3x-ui can register a
@@ -76,11 +107,48 @@ pool changes. Supported link schemes: `vmess`, `vless`, `trojan`, `ss`,
 `hysteria2` (`hy2`), and `wireguard` (`wg`). The panel refreshes enabled
 subscriptions on a timer and reloads Xray when something changes.
 
+## Routing rules
+
+**Routing rules** decide which outbound (or balancer) each connection uses. Each
+rule is a `field`-type matcher: set any of `domain`, `ip`, `port`, `network`,
+`protocol`, `inboundTag`, `sourceIP`, … and point it at an **`outboundTag`** or a
+**`balancerTag`**. Rules are evaluated **top-to-bottom — the first match wins**, so
+put specific rules above general ones.
+
+```json title="route ads to blackhole, private IPs direct"
+{
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      { "type": "field", "domain": ["geosite:category-ads-all"], "outboundTag": "block" },
+      { "type": "field", "ip": ["geoip:private"], "outboundTag": "direct" }
+    ]
+  }
+}
+```
+
 ## Balancers
 
-Reference outbound tags (including wildcards) in an Xray **balancer** to spread or
-fail over traffic across a pool. The panel can report balancer status and let you
-**override** a balancer to a specific outbound for testing.
+A **balancer** groups outbounds by a **selector** (tag prefixes, including the
+wildcard pools from outbound subscriptions) and spreads or fails traffic over them
+with a **strategy**:
+
+| Strategy      | Picks…                                          | Needs a monitor          |
+| ------------- | ----------------------------------------------- | ------------------------ |
+| `random`      | a random member per connection                  | no                       |
+| `roundRobin`  | members in rotation                             | no                       |
+| `leastPing`   | the lowest-latency member                       | **`observatory`**        |
+| `leastLoad`   | the most stable member by sampled load          | **`burstObservatory`**   |
+
+Reference a balancer from a rule via `balancerTag`. `leastPing` and `leastLoad`
+need a health monitor, which Xray places at the **top level** of the config
+(`observatory` / `burstObservatory`, **not** inside `routing`). The panel can
+report balancer status and **override** a balancer to a specific outbound for
+testing.
+
+Build the routing block — rules, balancers, and the matching observatory — here:
+
+<RoutingBuilder />
 
 <Callout type="warn">
   Outbounds that reach external services are fetched with SSRF protection — by

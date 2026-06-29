@@ -28,6 +28,10 @@ https://<sub-host>:<sub-port>/sub/<sub-id>
 
 其中 `<sub-id>` 是客户端的 **Sub ID**。
 
+同一个 Sub ID 会在不同路径上以多种格式提供 —— `subPath` 上的 **Base64** 列表和 JSON 路径上的 **JSON**（Xray-json）配置。在此构建这些 URL 并预览两种内容：
+
+<SubscriptionBuilder />
+
 ## 输出格式
 
 **格式由路径决定**，每种格式都有各自的启用开关：
@@ -39,6 +43,10 @@ https://<sub-host>:<sub-port>/sub/<sub-id>
 | **Clash / Mihomo**    | `/clash/` | `subClashEnable` | YAML 配置文件。                                     |
 
 只有使用 **VLESS、VMess、Trojan、Shadowsocks 或 Hysteria2** 的已启用入站才会出现在订阅中，并按其订阅排序索引排列。使用 `Accept: text/html` 头（或 `?html=1`）请求 `/sub/` 会返回一个人类可读的信息页面，而非原始内容。
+
+### Base64 与 JSON
+
+**Base64** 内容只是用换行符连接的分享链接，经标准 base64 编码（通过 `subEncrypt` 开关控制）。**JSON** 内容则将每个客户端包装为一份完整的 Xray 客户端配置 —— 一套固定的骨架（本地 mixed/HTTP 入站、DNS、路由、策略）加上一个指向该入站的 `proxy` 出站。3x-ui **对单个客户端输出单个配置对象，对多个客户端输出数组**，使用扁平的出站 `settings` 形式（`address`/`port`/`id`，`level: 8`），并从 `streamSettings` 中剥离 `sockopt`。
 
 ## 响应头
 
